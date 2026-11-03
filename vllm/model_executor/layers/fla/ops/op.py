@@ -11,7 +11,9 @@ import os
 
 from vllm.triton_utils import tl, tldevice, triton
 
-if os.environ.get('FLA_USE_FAST_OPS', '0') == '1':
+if (os.environ.get('FLA_USE_FAST_OPS', '0') == '1'
+        and all(hasattr(tldevice, name) for name in
+                ('fast_dividef', 'fast_expf', 'fast_logf', 'fast_log2f'))):
     div = tldevice.fast_dividef
     exp = tldevice.fast_expf
     log = tldevice.fast_logf
@@ -23,9 +25,12 @@ else:
         return x / y
 
     div = div_normal
-    exp = tl.exp
-    log = tl.log
-    log2 = tl.log2
+    # Triton 3.4 moved these helpers under ``tl.math`` on some builds.
+    # Keep the import path usable during vLLM model registry inspection too.
+    _tl_math = getattr(tl, "math", tl)
+    exp = getattr(tl, "exp", None) or getattr(_tl_math, "exp", None)
+    log = getattr(tl, "log", None) or getattr(_tl_math, "log", None)
+    log2 = getattr(tl, "log2", None) or getattr(_tl_math, "log2", None)
 
 
 if not hasattr(tl, 'gather'):

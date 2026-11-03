@@ -94,3 +94,14 @@ class TritonLanguagePlaceholder(types.ModuleType):
         self.int64 = None
         self.int32 = None
         self.tensor = None
+        # Import-time placeholders used by the Ascend patch modules.  The
+        # actual execution is replaced by vllm-ascend's NPU kernels.
+        self.exp = lambda x: x
+        self.log = lambda x: x
+        self.log2 = lambda x: x
+        self.sqrt = lambda x: x
+        self.sigmoid = lambda x: x
+        self.rsqrt = lambda x: x
+        self.cdiv = lambda x, y: (x + y - 1) // y
+        self.arange = lambda *args, **kwargs: None
+        self.program_id = lambda *args, **kwargs: 0

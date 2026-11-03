@@ -426,6 +426,11 @@ class DeepseekV32ForCausalLM(VerifyAndUpdateConfig):
 
 
 MODELS_CONFIG_MAP: dict[str, type[VerifyAndUpdateConfig]] = {
+    # Qwen3.5's dense text tower uses alternating full attention and GDN
+    # layers, so it needs the hybrid attention/mamba cache sizing pass even
+    # though the registered model class is supplied by vllm-ascend.
+    "SplitQuantQwen3_5ForConditionalGeneration": HybridAttentionMambaModelConfig,
+    "Qwen3_5ForConditionalGeneration": HybridAttentionMambaModelConfig,
     "GteModel": SnowflakeGteNewModelConfig,
     "GteNewModel": GteNewModelConfig,
     "GteNewForSequenceClassification": GteNewModelConfig,

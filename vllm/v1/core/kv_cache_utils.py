@@ -16,7 +16,7 @@ from vllm.utils import GiB_bytes, cdiv, sha256_cbor
 from vllm.v1.kv_cache_interface import (ChunkedLocalAttentionSpec,
                                         FullAttentionSpec, KVCacheConfig,
                                         KVCacheGroupSpec, KVCacheSpec,
-                                        KVCacheTensor, SlidingWindowSpec,
+                                        KVCacheTensor, MambaSpec, SlidingWindowSpec,
                                         UniformTypeKVCacheSpecs)
 from vllm.v1.metrics.stats import PrefixCacheStats
 from vllm.v1.request import Request
@@ -1183,6 +1183,17 @@ def get_kv_cache_groups(
         # into groups with the same number of layers, and thus same total page
         # size.
         return _get_kv_cache_groups_uniform_page_size(kv_cache_spec)
+
+    # Hybrid GDN models use per-layer recurrent state plus full attention.
+    # Their MambaSpec and FullAttentionSpec page sizes need not match; those
+    # caches have separate managers and can be allocated as separate groups.
+    elif all(isinstance(spec, (FullAttentionSpec, MambaSpec))
+             for spec in kv_cache_spec.values()):
+        grouped = defaultdict(list)
+        for layer_name, spec in kv_cache_spec.items():
+            grouped[spec].append(layer_name)
+        return [KVCacheGroupSpec(names, spec)
+                for spec, names in grouped.items()]
 
     raise NotImplementedError
 

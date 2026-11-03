@@ -12,6 +12,13 @@ import torch
 from vllm.attention.backends.utils import PAD_SLOT_ID
 from vllm.triton_utils import tl, triton
 
+# Triton 3.4 removed the top-level helper on CPU/NPU builds.  Keep the
+# launch configuration portable; this value is only used as a constexpr.
+if not hasattr(triton, "next_power_of_2"):
+    def _next_power_of_2(value: int) -> int:
+        return 1 if value <= 1 else 1 << (value - 1).bit_length()
+    triton.next_power_of_2 = _next_power_of_2
+
 
 @triton.jit()
 def _causal_conv1d_fwd_kernel(  # continuous batching
