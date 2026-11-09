@@ -645,6 +645,19 @@ class VoyageQwen3BidirectionalEmbedModelConfig(VerifyAndUpdateConfig):
         model_config.hf_config.embedding_size = model_config.hf_config.num_labels
 
 
+class SplitQuantQwen3_5ForCausalLMConfig(Qwen3_5ForConditionalGenerationConfig):
+    @staticmethod
+    def verify_and_update_config(vllm_config: "VllmConfig") -> None:
+        Qwen3_5ForConditionalGenerationConfig.verify_and_update_config(vllm_config)
+        # The opaque W4A4 operator uses host-prepared metadata. Its supported
+        # capture path is ordinary ACL Graph, with explicit eager warmup.
+        if vllm_config.additional_config is None:
+            vllm_config.additional_config = {}
+        vllm_config.additional_config.setdefault(
+            "ascend_compilation_config", {}
+        ).setdefault("enable_npugraph_ex", False)
+
+
 MODELS_CONFIG_MAP: dict[str, type[VerifyAndUpdateConfig]] = {
     "ColBERTJinaRobertaModel": JinaRobertaModelConfig,
     "DeepseekV32ForCausalLM": DeepseekV32ForCausalLM,
@@ -672,6 +685,7 @@ MODELS_CONFIG_MAP: dict[str, type[VerifyAndUpdateConfig]] = {
     "Qwen3ForSequenceClassification": Qwen3ForSequenceClassificationConfig,
     "Qwen3VLForSequenceClassification": Qwen3VLForSequenceClassificationConfig,
     "Qwen3_5ForConditionalGeneration": Qwen3_5ForConditionalGenerationConfig,
+    "SplitQuantQwen3_5ForCausalLM": SplitQuantQwen3_5ForCausalLMConfig,
     "Qwen3_5MoeForConditionalGeneration": Qwen3_5ForConditionalGenerationConfig,
     "VoyageQwen3BidirectionalEmbedModel": VoyageQwen3BidirectionalEmbedModelConfig,
     "XLMRobertaModel": JinaRobertaModelConfig,

@@ -269,7 +269,11 @@ class Qwen3_5DecoderLayer(Qwen3NextDecoderLayer):
                 prefix=f"{prefix}.mlp",
             )
         elif config.model_type == "qwen3_5_text":
-            self.mlp = Qwen3NextMLP(
+            mlp_cls = Qwen3NextMLP
+            if getattr(quant_config, "is_splitquant", False):
+                from vllm_ascend.splitquant_qwen35 import SplitQuantIndependentMLP
+                mlp_cls = SplitQuantIndependentMLP
+            self.mlp = mlp_cls(
                 hidden_size=config.hidden_size,
                 intermediate_size=config.intermediate_size,
                 hidden_act=config.hidden_act,
@@ -400,6 +404,10 @@ class Qwen3_5Model(Qwen3NextModel):
         ]
 
         params_dict = dict(self.named_parameters())
+        if any(".mlp.gate_proj.weight" in name for name in params_dict):
+            # Independent SplitQuant projections cannot share transform metadata.
+            stacked_params_mapping = [entry for entry in stacked_params_mapping
+                                      if entry[0] != "gate_up_proj"]
         loaded_params: set[str] = set()
         expert_params_mapping = self.get_expert_mapping()
         is_fused_expert = False
